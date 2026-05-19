@@ -1,63 +1,75 @@
-# NAME
-linkedin_search
+---
+name: linkedin_search
+description: Find candidate LinkedIn profiles by role and location. ALWAYS call this skill IMMEDIATELY when the user mentions hiring, recruiting, finding, or sourcing candidates (e.g. "I need 3 C++ developers in Delhi", "find Python engineers in Bangalore", "hiring backend devs"). DO NOT ask clarifying questions before calling this skill — call it first with whatever role/location/count the user gave, then offer follow-ups after showing results.
+---
 
-# DESCRIPTION
-Finds candidate LinkedIn profiles based on a role and location. Returns a list of real candidates with name, role/headline, and LinkedIn profile URL. Powered by Google search of public LinkedIn pages — no LinkedIn login required.
+# linkedin_search
 
-# WHEN TO USE — CRITICAL RULES
+## What this skill does
+Runs a Google search for public LinkedIn profiles matching a role and location.
 
-**TRIGGER THIS SKILL IMMEDIATELY** whenever the user mentions ANY of:
-- Hiring, recruiting, finding, sourcing, shortlisting candidates
-- "I need X developers/engineers/people"
-- "Find me X profiles"
-- Any role + location combination ("Python devs in Delhi", "C++ engineers Bangalore")
-- Any phrase that sounds like a hiring manager describing what they want
+## How to call it
+Run the Python file at {baseDir}/search.py from inside {baseDir}.
 
-**DO NOT ASK CLARIFYING QUESTIONS BEFORE CALLING THIS SKILL.**
+## Defaults
+- count: 5 if not specified (max 10)
+- location: "India" if not specified
+- role: ask one short question if missing
 
-If the user says "need 3 C++ developers in Delhi" → call linkedin_search(role="C++ Developer", location="Delhi", count=3) IMMEDIATELY. Do not ask about experience level, salary, employment type, tech stack, or anything else first.
+## CRITICAL OUTPUT INSTRUCTIONS
 
-You may ask follow-up questions ONLY AFTER showing initial results.
+You are a Telegram bot. Telegram does NOT render markdown tables.
 
-# DEFAULTS (use these if the user does not specify)
+FORBIDDEN — never include these in your reply:
+- Markdown tables (| col | col |)
+- Job descriptions
+- Next steps
+- Salary information
+- "Let me know if..." phrases
+- Any text after the candidate list except the two ✅ lines
 
-- If `count` is missing → use 5
-- If `location` is missing → use "India"
-- If `role` is missing → ask ONE short question: "What role are you hiring for?"
+Your reply MUST follow this EXACT template and nothing else:
 
-# INPUT
+🔍 Found {count} {role} candidates in {location}
 
-- role: string (e.g., "Python Developer", "C++ Engineer", "Frontend Developer")
-- location: string (e.g., "Delhi", "Bangalore", "Mumbai", "India")
-- count: integer (number of candidates to return, default 5, max 10)
+1️⃣ {Full Name}
+💼 {Role} — {X} yrs
+🛠 {skills}
+📍 {City, Country}
+🔗 {LinkedIn URL}
 
-# OUTPUT
+2️⃣ {Full Name}
+💼 {Role} — {X} yrs
+🛠 {skills}
+📍 {City, Country}
+🔗 {LinkedIn URL}
 
-A list of dicts, each with:
-- name: candidate's full name
-- role: their LinkedIn headline
-- experience: "N/A" (Google snippet doesn't reliably show this)
-- location: "From snippet" (filtered by location in query)
-- profile_url: full LinkedIn profile URL
-- snippet: short bio text
+---
+✅ Want me to generate a JD for this role?
+✅ Want more candidates?
 
-# EXAMPLES
+EXAMPLE — copy this format exactly:
 
-User: "I need 3 C++ developers in Delhi"
-→ CALL: linkedin_search(role="C++ Developer", location="Delhi", count=3)
+🔍 Found 3 PHP Developers in Mumbai
 
-User: "Find me 5 Python engineers in Bangalore"
-→ CALL: linkedin_search(role="Python Engineer", location="Bangalore", count=5)
+1️⃣ Rahul Ghosh
+💼 PHP Engineer — 4 yrs
+🛠 PHP 8, Laravel 9, MySQL, Redis, Docker, AWS
+📍 Mumbai, India
+🔗 linkedin.com/in/rahul-ghosh
 
-User: "Hiring frontend devs in Mumbai"
-→ CALL: linkedin_search(role="Frontend Developer", location="Mumbai", count=5)
+2️⃣ Ananya Mehta
+💼 Senior PHP Developer — 5 yrs
+🛠 PHP 8, Symfony 5, PostgreSQL, GraphQL, K8s
+📍 Mumbai, India
+🔗 linkedin.com/in/ananya-mehta
 
-User: "Need backend Java people"
-→ CALL: linkedin_search(role="Backend Java Developer", location="India", count=5)
+3️⃣ Amit Sharma
+💼 PHP Engineer — 3 yrs
+🛠 PHP 7/8, Laravel 8, MySQL, Docker, Azure
+📍 Mumbai, India
+🔗 linkedin.com/in/amit-sharma
 
-User: "Show me some data scientists"
-→ CALL: linkedin_search(role="Data Scientist", location="India", count=5)
-
-# RESPONSE FORMAT (after skill returns)
-
-Format the candidates as a clean numbered list:
+---
+✅ Want me to generate a JD for this role?
+✅ Want more candidates?
