@@ -41,7 +41,13 @@ if skills_match:
     skills_raw = [s for s in skills_raw if not any(x in s.lower() for x in ["location", "experience", "opening", "year", "india", "mumbai", "delhi", "bangalore", "hybrid", "onsite", "full-time", "on-site"])]
 else:
     skills_raw = []
-skills = ", ".join(skills_raw[:8]) if skills_raw else "Software Developer"
+# Extract tech keywords from skill sentences
+tech_pattern = r'\b(C\+\+[\s\d/]*|Python|Java|JavaScript|TypeScript|PHP|Laravel|MySQL|PostgreSQL|MongoDB|Redis|Docker|Kubernetes|Git|Linux|AWS|GCP|Azure|React|Node\.js|Django|Flask|Spring|CMake|Qt|Boost|STL|GraphQL|REST|CI/CD|Jenkins|GitHub Actions|GitLab)\b'
+found = []
+full_text_for_skills = " ".join(skills_raw)
+found = re.findall(tech_pattern, full_text_for_skills, re.IGNORECASE)
+found = list(dict.fromkeys([s.strip() for s in found]))  # dedupe preserve order
+skills = ", ".join(found[:8]) if found else ", ".join([s.split()[0] for s in skills_raw[:5]])
 location = find([r"location[:\s]+([^\n,]+)", r"based\s+in\s+([^\n,]+)", r"(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida)"], raw, "Mumbai")
 openings = find([r"(\d+)\s*(?:opening|vacancy|vacancies|position|role)s?", r"hiring\s+(\d+)", r"openings?[:\s]+(\d+)"], raw, "3")
 job_type = "internship" if re.search(r"intern", raw, re.IGNORECASE) else "job"

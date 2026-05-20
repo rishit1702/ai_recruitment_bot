@@ -16,11 +16,13 @@ if os.path.exists(jd_file):
     location = jd_data.get("location", "Mumbai")
     experience = jd_data.get("experience", "5")
     count = jd_data.get("count", "3")
+    skills = jd_data.get("skills", "Software Developer")
     description = jd_data.get("description", "")
     print(f"Loaded JD: {role} in {location}")
 else:
     # Fallback defaults
     role = "Software Engineer"
+    skills = "Software Developer"
     location = "Mumbai"
     experience = "5"
     count = "3"
@@ -84,7 +86,7 @@ driver.execute_script("arguments[0].click();", driver.find_element(By.ID, "min_e
 time.sleep(1)
 
 # Skills
-for skill in ["PHP", "Laravel", "MySQL"]:
+for skill in [s.strip() for s in skills.split(",")][:5]:
     s = driver.find_element(By.ID, "job_skill")
     driver.execute_script("arguments[0].scrollIntoView({block:'center'});", s)
     s.clear()
