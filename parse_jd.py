@@ -32,10 +32,12 @@ title = find([r"(?:job title|role|position)[:\s]+([^\n]+)", r"hiring[:\s]+([^\n]
 title = re.sub(r"\s*[–\-—]\s*(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida).*$", "", title, flags=re.IGNORECASE)
 title = re.sub(r"\s*\(.*?\)\s*$", "", title).strip()
 experience = find([r"(\d+)\+?\s*(?:years?|yrs?)\s*(?:of\s*)?experience", r"experience[:\s]+(\d+)", r"(\d+)\s*-\s*\d+\s*years?"], raw, "3")
-skills_raw = find_list([r"(?:skills?|tech stack|technologies?|required)[:\s]+((?:[^\n]+\n?){1,5})"], raw)
+skills_raw = find_list([r"(?:required skills?|tech stack|technologies?|key skills?|skills?)[:\s]+((?:[^\n]+\n?){1,8})"], raw)
 if not skills_raw:
-    skills_raw = re.findall(r'\b(PHP|Python|Java|React|Node|Laravel|MySQL|MongoDB|AWS|Docker|Git)\b', raw)
-skills = ", ".join(skills_raw[:8]) if skills_raw else "PHP, MySQL, Laravel"
+    # extract any capitalized tech words from full text
+    skills_raw = re.findall(r'\b([A-Z][a-zA-Z0-9+#.]+(?:\s[A-Z][a-zA-Z0-9+#.]+)*)\b', raw)
+    skills_raw = [s for s in skills_raw if len(s) > 1 and s not in ["We","The","Key","Job","Title","Location","India","Full","Mumbai","Delhi","Required","Preferred","Education","Bachelor","Experience","How","Apply","Send","Contact"]]
+skills = ", ".join(skills_raw[:8]) if skills_raw else "Software Developer"
 location = find([r"location[:\s]+([^\n,]+)", r"based\s+in\s+([^\n,]+)", r"(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida)"], raw, "Mumbai")
 openings = find([r"(\d+)\s*(?:opening|vacancy|vacancies|position|role)s?", r"hiring\s+(\d+)", r"openings?[:\s]+(\d+)"], raw, "3")
 job_type = "internship" if re.search(r"intern", raw, re.IGNORECASE) else "job"
