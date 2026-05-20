@@ -49,6 +49,21 @@ found = re.findall(tech_pattern, full_text_for_skills, re.IGNORECASE)
 found = list(dict.fromkeys([s.strip() for s in found]))  # dedupe preserve order
 skills = ", ".join(found[:8]) if found else ", ".join([s.split()[0] for s in skills_raw[:5]])
 location = find([r"location[:\s]+([^\n,]+)", r"based\s+in\s+([^\n,]+)", r"(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida)"], raw, "Mumbai")
+# Normalize to exact Internshala city names
+city_map = {
+    "delhi": "New Delhi",
+    "new delhi": "New Delhi", 
+    "mumbai": "Mumbai",
+    "bangalore": "Bangalore",
+    "bengaluru": "Bangalore",
+    "hyderabad": "Hyderabad",
+    "pune": "Pune",
+    "chennai": "Chennai",
+    "gurugram": "Gurugram",
+    "gurgaon": "Gurugram",
+    "noida": "Noida",
+}
+location = city_map.get(location.strip().lower(), location.strip())
 openings = find([r"(\d+)\s*(?:opening|vacancy|vacancies|position|role)s?", r"hiring\s+(\d+)", r"openings?[:\s]+(\d+)"], raw, "3")
 job_type = "internship" if re.search(r"intern", raw, re.IGNORECASE) else "job"
 ctc_match = re.search(r"(\d+)\s*[-–to]+\s*(\d+)\s*(?:LPA|lpa|lakh|L)", raw)

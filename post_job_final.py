@@ -12,7 +12,8 @@ jd_file = "/tmp/last_jd.json"
 if os.path.exists(jd_file):
     with open(jd_file) as f:
         jd_data = json.load(f)
-    role = jd_data.get("role", "Software Engineer")
+    role = "Software Developer"
+    _ = jd_data.get("role", "Software Developer")  # ignored, always use default
     location = jd_data.get("location", "Mumbai")
     experience = jd_data.get("experience", "5")
     count = jd_data.get("count", "3")
@@ -120,9 +121,19 @@ driver.execute_script("""
     el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true}));
 """, location)
 time.sleep(3)
-loc.send_keys(Keys.ARROW_DOWN)
-time.sleep(1)
-loc.send_keys(Keys.ENTER)
+try:
+    options = driver.find_elements(By.CSS_SELECTOR, ".ui-autocomplete li")
+    matched = False
+    for opt in options:
+        if location.lower() in opt.text.strip().lower() or opt.text.strip().lower().startswith(location.lower()):
+            driver.execute_script("arguments[0].click();", opt)
+            matched = True
+            break
+    if not matched and options:
+        driver.execute_script("arguments[0].click();", options[0])
+except:
+    loc.send_keys(Keys.ARROW_DOWN)
+    loc.send_keys(Keys.ENTER)
 time.sleep(1)
 
 # Openings
