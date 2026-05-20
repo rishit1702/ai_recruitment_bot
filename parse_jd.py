@@ -32,13 +32,15 @@ title = find([r"(?:job title|role|position)[:\s]+([^\n]+)", r"hiring[:\s]+([^\n]
 title = re.sub(r"\s*[–\-—]\s*(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida).*$", "", title, flags=re.IGNORECASE)
 title = re.sub(r"\s*\(.*?\)\s*$", "", title).strip()
 experience = find([r"(\d+)\+?\s*(?:years?|yrs?)\s*(?:of\s*)?experience", r"experience[:\s]+(\d+)", r"(\d+)\s*-\s*\d+\s*years?"], raw, "3")
-skills_raw = find_list([r"(?:required skills?|tech stack|technologies?|key skills?|skills?)[:\s]+((?:[^\n]+\n?){1,8})"], raw)
-if not skills_raw:
-    # extract any capitalized tech words from full text
-    skills_raw = re.findall(r'\b([A-Z][a-zA-Z0-9+#.]+(?:\s[A-Z][a-zA-Z0-9+#.]+)*)\b', raw)
-    skills_raw = [s for s in skills_raw if len(s) > 1 and s not in ["We","The","Key","Job","Title","Location","India","Full","Mumbai","Delhi","Required","Preferred","Education","Bachelor","Experience","How","Apply","Send","Contact"]]
-# Remove location/experience lines from skills
-skills_raw = [s for s in skills_raw if not any(x in s.lower() for x in ["location", "experience", "opening", "year", "india", "mumbai", "delhi", "bangalore", "hybrid", "onsite"])]
+# Extract skills section
+skills_match = re.search(r'(?:required skills?|tech stack|technologies?|key skills?|skills?)[:\s]*\n((?:[^\n]+\n?){1,10})', raw, re.IGNORECASE)
+if skills_match:
+    block = skills_match.group(1)
+    skills_raw = re.split(r'[,\n•\-\*]+', block)
+    skills_raw = [s.strip() for s in skills_raw if s.strip()]
+    skills_raw = [s for s in skills_raw if not any(x in s.lower() for x in ["location", "experience", "opening", "year", "india", "mumbai", "delhi", "bangalore", "hybrid", "onsite", "full-time", "on-site"])]
+else:
+    skills_raw = []
 skills = ", ".join(skills_raw[:8]) if skills_raw else "Software Developer"
 location = find([r"location[:\s]+([^\n,]+)", r"based\s+in\s+([^\n,]+)", r"(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida)"], raw, "Mumbai")
 openings = find([r"(\d+)\s*(?:opening|vacancy|vacancies|position|role)s?", r"hiring\s+(\d+)", r"openings?[:\s]+(\d+)"], raw, "3")
