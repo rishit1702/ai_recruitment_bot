@@ -37,6 +37,8 @@ if not skills_raw:
     # extract any capitalized tech words from full text
     skills_raw = re.findall(r'\b([A-Z][a-zA-Z0-9+#.]+(?:\s[A-Z][a-zA-Z0-9+#.]+)*)\b', raw)
     skills_raw = [s for s in skills_raw if len(s) > 1 and s not in ["We","The","Key","Job","Title","Location","India","Full","Mumbai","Delhi","Required","Preferred","Education","Bachelor","Experience","How","Apply","Send","Contact"]]
+# Remove location/experience lines from skills
+skills_raw = [s for s in skills_raw if not any(x in s.lower() for x in ["location", "experience", "opening", "year", "india", "mumbai", "delhi", "bangalore", "hybrid", "onsite"])]
 skills = ", ".join(skills_raw[:8]) if skills_raw else "Software Developer"
 location = find([r"location[:\s]+([^\n,]+)", r"based\s+in\s+([^\n,]+)", r"(Mumbai|Delhi|Bangalore|Hyderabad|Pune|Chennai|Gurugram|Noida)"], raw, "Mumbai")
 openings = find([r"(\d+)\s*(?:opening|vacancy|vacancies|position|role)s?", r"hiring\s+(\d+)", r"openings?[:\s]+(\d+)"], raw, "3")
