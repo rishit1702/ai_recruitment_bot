@@ -46,7 +46,7 @@ req = urllib.request.Request(
     data=payload,
     headers={
         "Content-Type": "application/json",
-        "Authorization": "Bearer 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"
+        "Authorization": "Bearer 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"
     },
     method="POST"
 )
@@ -71,6 +71,25 @@ try:
             print(f"   {c['reason']}\n")
 
         print(f"Saved to /tmp/ranked_applicants.json")
+
+        # Send to Telegram
+        import urllib.parse
+        medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+        msg = f"📋 *Ranked Candidates for {jd['role']}*\n\n"
+        for i, c in enumerate(ranked):
+            medal = medals[i] if i < len(medals) else f"{i+1}."
+            msg += f"{medal} *{c['name']}* — {c['score']}% match\n"
+            msg += f"   _{c['reason']}_\n\n"
+
+        tg_url = f"https://api.telegram.org/bot8670308700:AAG3WCi5led6l1J6XLOnIdM5VrZ4BINA_-E/sendMessage"
+        tg_payload = json.dumps({
+            "chat_id": "943955595",
+            "text": msg,
+            "parse_mode": "Markdown"
+        }).encode()
+        tg_req = urllib.request.Request(tg_url, data=tg_payload, headers={"Content-Type": "application/json"}, method="POST")
+        urllib.request.urlopen(tg_req)
+        print("Sent to Telegram!")
 
 except Exception as e:
     print(f"Error: {e}")
