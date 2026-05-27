@@ -46,7 +46,7 @@ req = urllib.request.Request(
     data=payload,
     headers={
         "Content-Type": "application/json",
-        "Authorization": "Bearer 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"
+        "Authorization": "Bearer YOUR_OPENROUTER_API_KEY"
     },
     method="POST"
 )
@@ -81,9 +81,9 @@ try:
             msg += f"{medal} *{c['name']}* — {c['score']}% match\n"
             msg += f"   _{c['reason']}_\n\n"
 
-        tg_url = f"https://api.telegram.org/bot8670308700:AAG3WCi5led6l1J6XLOnIdM5VrZ4BINA_-E/sendMessage"
+        tg_url = f"https://api.telegram.org/botYOUR_BOT_TOKEN/sendMessage"
         tg_payload = json.dumps({
-            "chat_id": "943955595",
+            "chat_id": "YOUR_CHAT_ID",
             "text": msg,
             "parse_mode": "Markdown"
         }).encode()
