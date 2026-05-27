@@ -1,108 +1,298 @@
 # AI Recruitment Bot
 
-A Telegram bot that takes plain-English hiring requests and returns real candidate profiles from LinkedIn.
+An end-to-end AI-powered recruitment pipeline built on Telegram. A hiring manager sends a plain-English message and the bot finds candidates, generates a Job Description, posts the job live on Internshala, fetches applicants, and returns a ranked shortlist — all from a single chat window.
 
 Built during my AI Engineering internship at VVDN Technologies.
 
-## The idea
+---
 
-A hiring manager opens Telegram and types:
+## What it does
 
-    I need 3 Python developers in Bangalore
+| Step | Manager action | What happens |
+|---|---|---|
+| 1 | "Find 3 PHP devs Mumbai 5 YOE" | Bot scrapes Google for real LinkedIn profiles and returns a candidate list |
+| 2 | "Generate JD" | Bot calls LLM API and returns a full formatted Job Description |
+| 3 | Run 2 terminal commands | JD is parsed and posted live on Internshala via Chrome automation |
+| 4 | Run 1 terminal command | Bot fetches applicants from Internshala dashboard |
+| 5 | Run 1 terminal command | Bot ranks candidates by JD match and sends results to Telegram |
 
-The bot parses that, runs a search, and replies with a short list of real profiles — names, headlines, LinkedIn URLs.
+---
 
-No form to fill. No dashboard to log into. Just chat.
+## Architecture
 
-## How it works
+```
+Manager types in Telegram
+        ↓
+OpenClaw (agent framework) → LLM (OpenRouter)
+        ↓
+Skills: linkedin_search / jd_generator
+        ↓
+Terminal: parse_jd.py → post_job_final.py → Internshala (Chrome)
+        ↓
+Terminal: fetch_applicants.py → rank.py → Telegram
+```
 
-The flow is:
+---
 
-    Telegram  →  OpenClaw  →  LLM  →  linkedin_search skill  →  source module  →  results
+## Project Structure
 
-- **OpenClaw** runs the agent loop, talks to Telegram, and invokes skills. Think of it as the backbone.
-- **LLM** is gpt-oss-120b (via OpenRouter, free tier). It decides when to call the skill and with what arguments.
-- **linkedin_search** is the skill we built. It has one job: given a role + location + count, return candidates.
-- **Source modules** sit inside the skill. The skill delegates to whichever source is selected in the config. This is the important design decision — see below.
+```
+ai_recruitment_bot/
+├── skills/
+│   ├── linkedin_search/
+│   │   ├── SKILL.md              # OpenClaw skill definition
+│   │   ├── search.py             # Router — picks source module
+│   │   └── sources/
+│   │       ├── source_google.py  # Google scraper (default)
+│   │       ├── source_mock.py    # Hardcoded test data
+│   │       └── source_selenium.py # Direct LinkedIn (blocked)
+│   └── jd_generator/
+│       ├── SKILL.md              # OpenClaw skill definition
+│       └── generate.py           # Calls LLM API, saves /tmp/last_jd.json
+├── parse_jd.py                   # Parses JD text → /tmp/last_jd.json
+├── post_job_final.py             # Selenium form filler for Internshala
+├── fetch_applicants.py           # Scrapes applicants from Internshala dashboard
+├── rank.py                       # Ranks candidates via LLM, sends to Telegram
+├── applicants.json               # Mock applicant data for testing
+├── requirements.txt
+└── README.md
+```
 
-## Why pluggable sources matter
-
-The first version of this project tried to scrape LinkedIn directly with Selenium. That turned into a rabbit hole (detailed in docs/SELENIUM_ATTEMPT.md). The short version: LinkedIn's anti-bot architecture in 2026 makes direct scraping very hard, and weak accounts return "LinkedIn Member" instead of real names.
-
-So instead of fighting that war, I designed the skill around a **swappable source** pattern. The skill exposes one function. Behind it, any of these can fetch the data:
-
-| Source | File | What it does | Status |
-|---|---|---|---|
-| google | sources/source_google.py | Google search for public LinkedIn pages, parses titles and snippets | **Working, current default** |
-| mock | sources/source_mock.py | Returns 5 hardcoded fake candidates | Fallback for offline testing |
-| selenium | sources/source_selenium.py | Direct LinkedIn scraper with login, anti-detection, JS injection | Documented attempt. Blocked by LinkedIn. |
-
-Switching between them is a single env var change: SOURCE_TYPE=google|mock|selenium. The router in search.py picks the right one.
-
-## Extending with other data sources
-
-The Google-search approach works well for a demo but has real limits: Google will eventually throttle automated queries, and the data per candidate is limited to whatever appears in the search snippet (name, headline, URL — no skills, experience, company history).
-
-If richer data is needed later — full skills, past companies, years of experience, education — the skill is architected so any new data source can be plugged in without rewriting the rest of the bot.
-
-The steps to add a new source would be:
-
-1. Drop a new file at sources/source_<name>.py that exposes a run(role, location, count) function and returns the same shape of dict as the other sources.
-2. Add any required credentials to .env.
-3. Add an elif branch in search.py to route SOURCE_TYPE=<name> to the new module.
-
-That's it. No changes to the bot, the OpenClaw integration, SKILL.md, or anything else. The scraping strategy is an implementation detail, not a dependency of the rest of the system.
+---
 
 ## Setup
 
-### What you need first
+### Prerequisites
+
 - Python 3.11+
 - Google Chrome installed
-- OpenClaw CLI: npm install -g openclaw
-- A Telegram bot token (get one from @BotFather on Telegram)
-- An OpenRouter API key (sign up at openrouter.ai, free tier is fine)
+- Node.js 18+
+- OpenClaw CLI: `npm install -g openclaw`
+- A Telegram bot token
+- An OpenRouter API key (free tier works)
 
-### Clone and install
-    git clone https://github.com/rishit1702/ai_recruitment_bot.git
-    cd ai_recruitment_bot
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+### 1. Clone and install
 
-### Fill in .env
-    cp .env.example .env
+```bash
+git clone https://github.com/rishit1702/ai_recruitment_bot.git
+cd ai_recruitment_bot
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-Then open .env and set SOURCE_TYPE=google. The LinkedIn email/password fields are only needed if you set SOURCE_TYPE=selenium (not recommended).
+### 2. Set up OpenRouter
 
-### Register the skill with OpenClaw
-OpenClaw loads skills from ~/.openclaw/workspace/skills/. Copy the skill folder in:
+1. Go to [openrouter.ai](https://openrouter.ai)
+2. Sign up and go to **Keys → Create Key**
+3. Copy your API key
 
-    cp -R skills/linkedin_search ~/.openclaw/workspace/skills/
-    cp .env ~/.openclaw/workspace/skills/linkedin_search/.env
+### 3. Create a Telegram Bot
 
-Verify OpenClaw sees it:
+1. Open Telegram and search for `@BotFather`
+2. Send `/newbot`
+3. Choose a name (e.g. `VVDN Recruiter`) and a username (e.g. `@VVDN_Recruiter_Bot`)
+4. BotFather gives you a **bot token** — copy it
+5. Get your **chat ID**:
+   - Start a conversation with your bot
+   - Open this URL in browser: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Send any message to the bot, refresh the URL
+   - Find `"chat":{"id":XXXXXXXXX}` — that number is your chat ID
 
-    openclaw skills info linkedin_search
+### 4. Configure OpenClaw
 
-Should show "Ready". If not, check SKILL.md has valid YAML frontmatter.
+Create the OpenClaw config at `~/.openclaw/openclaw.json`:
 
-### Run it
-    openclaw gateway --force
+```json
+{
+  "gateway": {
+    "mode": "local",
+    "auth": {
+      "mode": "token",
+      "token": "your_token_here"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/path/to/your/.openclaw/workspace",
+      "models": {
+        "meta-llama/llama-3.3-70b-instruct:free": {}
+      },
+      "timeoutSeconds": 600
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "YOUR_CHAT_ID"
+      ]
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "openrouter": {
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "api": "openai-completions",
+        "apiKey": "YOUR_OPENROUTER_API_KEY",
+        "models": [
+          {
+            "id": "meta-llama/llama-3.3-70b-instruct:free",
+            "name": "meta-llama/llama-3.3-70b-instruct:free",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": { "input": 0, "output": 0 }
+          }
+        ]
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "openrouter": { "enabled": true }
+    }
+  }
+}
+```
 
-Then message your Telegram bot. Try: "find me 3 C++ developers in Delhi".
+Replace:
+- `YOUR_TELEGRAM_BOT_TOKEN` → token from BotFather
+- `YOUR_CHAT_ID` → your Telegram chat ID
+- `YOUR_OPENROUTER_API_KEY` → your OpenRouter key
 
-## Testing the skill on its own (without OpenClaw)
-    cd skills/linkedin_search
-    python search.py
+### 5. Register skills with OpenClaw
 
-This runs the skill directly with a hardcoded test query and prints results to stdout. Useful when you're iterating on a source module.
+```bash
+cp -R skills/linkedin_search ~/.openclaw/workspace/skills/
+cp -R skills/jd_generator ~/.openclaw/workspace/skills/
+```
 
-## Design notes
+### 6. Set up Internshala Chrome session
 
-- **Secrets never in git.** .env is gitignored. .env.example is the template with empty values. Anyone cloning the repo has to fill in their own.
-- **Skill format follows AgentSkills spec.** SKILL.md starts with YAML frontmatter (name + description) — OpenClaw parses this to decide when to invoke the skill. Without valid frontmatter, OpenClaw silently ignores the skill (learned this the hard way).
-- **Router lives in search.py.** Single entry point for the skill. All branching on SOURCE_TYPE happens here. Keeps source modules simple and unaware of each other.
+Copy your logged-in Chrome profile so the bot can post jobs without re-login:
+
+```bash
+cp -r ~/Library/Application\ Support/Google/Chrome/Default /tmp/chrome_internshala_profile
+```
+
+If the session expires later, refresh it with:
+
+```bash
+rm -rf /tmp/chrome_internshala_profile && cp -r ~/Library/Application\ Support/Google/Chrome/Default /tmp/chrome_internshala_profile
+```
+
+### 7. Update bot token and chat ID in rank.py
+
+Open `rank.py` and find these two lines near the bottom of the file (inside the `try` block after saving `/tmp/ranked_applicants.json`):
+
+```python
+tg_url = f"https://api.telegram.org/bot8670308700:AAG3WCi5led6l1J6XLOnIdM5VrZ4BINA_-E/sendMessage"
+...
+"chat_id": "943955595",
+```
+
+Replace with your own values:
+
+```python
+tg_url = f"https://api.telegram.org/botYOUR_BOT_TOKEN/sendMessage"
+...
+"chat_id": "YOUR_CHAT_ID",
+```
+
+Or run this one-liner to replace both at once (fill in your values first):
+
+```bash
+python3 -c "
+content = open('rank.py').read()
+content = content.replace('YOUR_OLD_BOT_TOKEN', 'YOUR_NEW_BOT_TOKEN')
+content = content.replace('YOUR_OLD_CHAT_ID', 'YOUR_NEW_CHAT_ID')
+open('rank.py','w').write(content)
+print('done')
+"
+```
+
+After this, running `rank.py` will automatically send the ranked list to your Telegram chat.
+
+---
+
+## Running the bot
+
+### Start the bot
+
+```bash
+openclaw gateway
+```
+
+The bot is now live on Telegram.
+
+### Post a job (after bot generates JD)
+
+Copy the JD text from Telegram, then run:
+
+```bash
+cat > /tmp/last_jd_raw.txt
+# Paste JD text here, then press Ctrl+D
+```
+
+```bash
+/opt/homebrew/bin/python3 /tmp/parse_jd.py && DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib /opt/homebrew/bin/python3 /tmp/post_job_final.py
+```
+
+Chrome opens, fills the entire Internshala form, and clicks Post Job automatically.
+
+### Fetch and rank applicants (after job goes live)
+
+```bash
+DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib /opt/homebrew/bin/python3 /tmp/fetch_applicants.py
+/opt/homebrew/bin/python3 /tmp/rank.py
+```
+
+Ranked results are sent directly to your Telegram.
+
+---
+
+## Key Technical Notes
+
+| Problem | Solution |
+|---|---|
+| LinkedIn blocks scraping | Google search fallback for public LinkedIn pages |
+| Internshala salary fields reject send_keys | `nativeInputValueSetter` JS trick |
+| Internshala description field rejects send_keys | `HTMLTextAreaElement` JS trick |
+| OpenClaw can't run Python scripts | Scripts triggered manually from terminal |
+| Chrome session auth | Copied from Default profile to `/tmp/chrome_internshala_profile` |
+| Unicode chars in JD break form | Cleaned before passing to Selenium |
+
+---
+
+## Pluggable Source Architecture
+
+The candidate search is designed around swappable source modules. Switch sources by setting `SOURCE_TYPE` in `.env`:
+
+| Source | File | Status |
+|---|---|---|
+| `google` | `source_google.py` | Working — default |
+| `mock` | `source_mock.py` | Offline testing |
+| `selenium` | `source_selenium.py` | Blocked by LinkedIn |
+
+Adding a new source: drop a file at `sources/source_<name>.py` exposing `run(role, location, count)` and add an `elif` branch in `search.py`. Nothing else changes.
+
+---
+
+## Environment
+
+- macOS, M-series chip
+- Python 3.14 (Homebrew) — always prefix with `DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib`
+- Chrome 148
+- OpenClaw 2026.4.5
+- OpenRouter free tier (rate limit: ~20 req/min — use `/reset` in Telegram if context overflow occurs)
+
+---
 
 ## Author
+
 Rishit Gambhir  
 AI Engineering Intern, VVDN Technologies  
+[github.com/rishit1702](https://github.com/rishit1702)
